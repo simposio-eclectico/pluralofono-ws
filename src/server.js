@@ -1,29 +1,68 @@
 const http = require("http");
 const url = require("url");
 const WebSocket = require("ws");
+const { registerWSEndpoints } = require("./wsRouter");
 
 const PORT = 9870;
 const server = http.createServer();
 const ACTIVE_USERS = [];
 
-// WebSocket server para /v1
-const wssV1 = new WebSocket.Server({ noServer: true });
-
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// Maneja el upgrade para diferentes endpoints
-server.on("upgrade", (request, socket, head) => {
-  const pathname = url.parse(request.url).pathname;
-  if (pathname === "/v1") {
-    wssV1.handleUpgrade(request, socket, head, function done(ws) {
-      wssV1.emit("connection", ws, request);
-    });
-  } else {
-    socket.destroy();
-  }
+// Enrutamiento
+const wssV1 = new WebSocket.Server({ noServer: true });
+registerWSEndpoints(server, { '/v1': wssV1 });
+
+const peers = {}; // Almacena pares de peers por sala/ID
+const wssSignal = new WebSocket.Server({ noServer: true });
+registerWSEndpoints(server, { '/signaling': wssSignal });
+
+wssSignal.on('connection', (ws) => {
+  ws.on('message', (message) => {
+    const data = JSON.parse(message);
+    
+    // Registra el peer y su sala
+    if (data.type === 'register') {
+      const { room, peerId } = data;
+      if (!peers[room]) peers[room] = {};
+      peers[room][peerId] = ws; // Guarda la conexión WebSocket
+      return;
+    }
+
+    // Reenvía mensajes de señalización al peer destino
+    if (data.type === 'signal') {
+      const { room, targetPeerId, signal } = data;
+      const targetPeer = peers[room]?.[targetPeerId];
+      if (targetPeer) {
+        targetPeer.send(JSON.stringify({
+          type: 'signal',
+          senderPeerId: data.peerId,
+          signal,
+        }));
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    // Limpia peers desconectados
+    const rooms = Object.keys(peers);
+    for (const room of rooms) {
+      const peerIds = Object.keys(peers[room]);
+      for (const peerId of peerIds) {
+        if (peers[room][peerId] === ws) {
+          delete peers[room][peerId];
+          break;
+        }
+      }
+      if (Object.keys(peers[room]).length === 0) {
+        delete peers[room];
+      }
+    }
+  });
 });
+
 /**
  * Agrega función broadcast a WebSocket
  * @param {*} msg
