@@ -92,10 +92,15 @@ wssV1.on("connection", function connection(ws, req) {
   const parsedUrl = url.parse(req.url, true);
   const user = parsedUrl.query.username;
   ws.username = user; // Guarda el nombre para referencia en heartbeat
-  const isMaster = user === "s1mpos1o" && parsedUrl.query.master;
-  if (isMaster) {
-    master = ws;
-  }
+  // Si viene el querystring noMaster, no hay distinción entre master y slave
+  const noMasterMode = 'noMaster' in parsedUrl.query;
+  let isMaster = false;
+  if (!noMasterMode) {
+    isMaster = user === "s1mpos1o" && parsedUrl.query.master;
+    if (isMaster) {
+      master = ws;
+    }
+  } 
   // Verifica si el usuario ya existe
   if (ACTIVE_USERS.includes(user)) {
     ws.send(JSON.stringify({ error: "El nombre de usuario ya está en uso." }));
@@ -114,31 +119,51 @@ wssV1.on("connection", function connection(ws, req) {
     if (event instanceof Uint8Array) {
       // binary frame: [fz, factor, wave, volume, id]
       const view = new Uint8Array([...event, ws.id]);
-      master?.send(view, (err) => {
-        if (err) console.error("err sending", err);
-      });
+      if (master) {
+        master.send(view, (err) => {
+          if (err) console.error("err sending", err);
+        });
+      } else {
+        wssV1.broadcast(view);
+      }
       console.log(ws.id, "buffer", view);
     }
     if (event instanceof String) {
       // text frame
-      master?.send(JSON.stringify(ACTIVE_USERS), (err) => {
-        if (err) console.error("err sending", err);
-      });
+      if (master) {
+        master.send(JSON.stringify(ACTIVE_USERS), (err) => {
+          if (err) console.error("err sending", err);
+        });
+      } else {
+        wssV1.broadcast(JSON.stringify(ACTIVE_USERS));
+      }
       console.log(ws.id, "text", event);
     }
   });
 
   setInterval(() => {
     wssV1.broadcast("pong");
-    master?.send(JSON.stringify(ACTIVE_USERS), (err) => {
+    // Si hay master definido y no estamos en modo noMaster, envía a master; si no, omite
+    if (!noMasterMode && master) {
+      master.send(JSON.stringify(ACTIVE_USERS), (err) => {
+        console.log(
+          "new user: ",
+          req.url,
+          user,
+          isMaster ? "master" : "slave",
+          ws.id
+        );
+        if (err) console.error("err sending", err);
+      });
+    } else {
+      // En modo noMaster, loguea sin rol
       console.log(
         "new user: ",
         req.url,
         user,
-        isMaster ? "master" : "slave",
+        "noMaster",
         ws.id
       );
-      if (err) console.error("err sending", err);
-    });
+    }
   }, 3000);
 });
