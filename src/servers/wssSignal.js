@@ -3,6 +3,7 @@ const logger = require('pino')();
 const config = require('../config');
 
 const PEERS = new Map(); // Map<room, Map<peerId, ws>>
+const MAX_MSG_SIZE = config.get('maxMsgSize');
 
 // wssSignal: WebSocket de señalización para WebRTC
 const wssSignal = new WebSocket.Server({ noServer: true });
@@ -37,6 +38,16 @@ wssSignal.on('connection', (ws) => {
   logger.info("signaling connection");
 
   ws.on('message', (message) => {
+    if (typeof message === 'string' && Buffer.byteLength(message, 'utf8') > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje demasiado grande, cerrando conexión.`);
+      ws.close(1009, 'Message too large');
+      return;
+    }
+    if (message instanceof Buffer && message.length > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje binario demasiado grande, cerrando conexión.`);
+      ws.close(1009, 'Message too large');
+      return;
+    }
     const data = JSON.parse(message);
     
     // Registra el peer y su sala

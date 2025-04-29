@@ -4,6 +4,7 @@ const config = require('../config');
 
 const wss = new WebSocket.Server({ noServer: true });
 const ACTIVE_OSC = new Map(); // Map<ws.id, response>
+const MAX_MSG_SIZE = config.get('maxMsgSize');
 
 /**
  * Agrega función broadcast a WebSocket
@@ -59,6 +60,16 @@ wss.on("connection", function connection(ws, req) {
   logger.info("new user: ", req.url, user, ws.id);
 
   ws.on("message", function incoming(data) {
+    if (typeof data === 'string' && Buffer.byteLength(data, 'utf8') > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje demasiado grande de ${ws.id}, cerrando conexión.`);
+      ws.close(1009, 'Message too large'); // 1009 = Close frame: Message too big
+      return;
+    }
+    if (data instanceof Buffer && data.length > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje binario demasiado grande de ${ws.id}, cerrando conexión.`);
+      ws.close(1009, 'Message too large');
+      return;
+    }
     const { fz, key } = JSON.parse(data);
     const response = { connectionId: ws.id, user: user, fz, key };
     ACTIVE_OSC.set(ws.id, response);

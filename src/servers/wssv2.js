@@ -3,6 +3,7 @@ const WebSocket = require("ws");
 const logger = require('pino')();
 const config = require('../config');
 
+const MAX_MSG_SIZE = config.get('maxMsgSize');
 const ACTIVE_USERS = [];
 
 // wssV2: Pluralófono DOS (Theremin) WebSocket
@@ -88,6 +89,16 @@ wssV2.on("connection", function connection(ws, req) {
 
   // procesa mensajes recibidos desde slave y los envía al master
   ws.on("message", function incoming(event) {
+    if (typeof data === 'string' && Buffer.byteLength(data, 'utf8') > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje demasiado grande de ${ws.id}, cerrando conexión.`);
+      ws.close(1009, 'Message too large'); // 1009 = Close frame: Message too big
+      return;
+    }
+    if (data instanceof Buffer && data.length > MAX_MSG_SIZE) {
+      logger.warn(`Mensaje binario demasiado grande de ${ws.id}, cerrando conexión.`);
+      ws.close(1009, 'Message too large');
+      return;
+    }
     if (event instanceof Uint8Array) {
       // binary frame: [fz, factor, wave, volume, id]
       const view = new Uint8Array([...event, ws.id]);
