@@ -1,4 +1,5 @@
 const WebSocket = require("ws");
+const logger = require('pino')();
 
 const PEERS = {}; // Almacena pares de peers por sala/ID
 
@@ -6,7 +7,7 @@ const PEERS = {}; // Almacena pares de peers por sala/ID
 const wssSignal = new WebSocket.Server({ noServer: true });
 
 wssSignal.on('connection', (ws) => {
-  console.log("signaling connection");
+  logger.info("signaling connection");
 
   ws.on('message', (message) => {
     const data = JSON.parse(message);

@@ -1,5 +1,6 @@
 const url = require("url");
 const WebSocket = require("ws");
+const logger = require('pino')();
 
 const ACTIVE_USERS = [];
 
@@ -52,15 +53,15 @@ wssV2.broadcast = function broadcast(msg) {
   }
   
   wssV2.on("open", function open() {
-    console.log("connected");
+    logger.info("connected");
     heartbeat();
     wssV2.send(Date.now());
   });
   
   wssV2.on("error", function (error) {
     const elapsed = Date.now() - start;
-    console.log("Socket closed after %dms", elapsed);
-    console.error(error);
+    logger.info("Socket closed after %dms", elapsed);
+    logger.error(error);
   });
   
   wssV2.on("close", function close() {
@@ -103,23 +104,23 @@ wssV2.broadcast = function broadcast(msg) {
         const view = new Uint8Array([...event, ws.id]);
         if (master) {
           master.send(view, (err) => {
-            if (err) console.error("err sending", err);
+            if (err) logger.error("err sending", err);
           });
         } else {
           wssV2.broadcast(view);
         }
-        console.log(ws.id, "buffer", view);
+        logger.info(ws.id, "buffer", view);
       }
       if (event instanceof String) {
         // text frame
         if (master) {
           master.send(JSON.stringify(ACTIVE_USERS), (err) => {
-            if (err) console.error("err sending", err);
+            if (err) logger.error("err sending", err);
           });
         } else {
           wssV2.broadcast(JSON.stringify(ACTIVE_USERS));
         }
-        console.log(ws.id, "text", event);
+        logger.info(ws.id, "text", event);
       }
     });
   
@@ -128,18 +129,18 @@ wssV2.broadcast = function broadcast(msg) {
       // Si hay master definido y no estamos en modo noMaster, envía a master; si no, omite
       if (!noMasterMode && master) {
         master.send(JSON.stringify(ACTIVE_USERS), (err) => {
-          console.log(
+          logger.info(
             "new user: ",
             req.url,
             user,
             isMaster ? "master" : "slave",
             ws.id
           );
-          if (err) console.error("err sending", err);
+          if (err) logger.error("err sending", err);
         });
       } else {
         // En modo noMaster, loguea sin rol
-        console.log(
+        logger.info(
           "new user: ",
           req.url,
           user,

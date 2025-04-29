@@ -1,4 +1,5 @@
 const http = require("http");
+const logger = require('pino')();
 
 const { registerWSEndpoints } = require("./router");
 const { wssV1 } = require("./servers/wssv1");
@@ -9,7 +10,7 @@ const PORT = 9870;
 const server = http.createServer();
 
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
 
 // Enrutamiento

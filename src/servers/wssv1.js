@@ -1,4 +1,5 @@
 const WebSocket = require("ws");
+const logger = require('pino')();
 
 const wss = new WebSocket.Server({ noServer: true });
 const ACTIVE_OSC = {};
@@ -44,15 +45,15 @@ function heartbeat(id) {
 }
 
 wss.on("open", function open() {
-  console.log("connected");
+  logger.info("connected");
   heartbeat();
   wss.send(Date.now());
 });
 
 wss.on("error", function (error) {
   const elapsed = Date.now() - start;
-  console.log("Socket closed after %dms", elapsed);
-  console.error(error);
+  logger.info("Socket closed after %dms", elapsed);
+  logger.error(error);
 });
 
 wss.on("close", function close() {
@@ -62,7 +63,7 @@ wss.on("close", function close() {
 wss.on("connection", function connection(ws, req) {
   ws.id = crypto.randomUUID();
   const user = req.url.split("=")[1];
-  console.log("new user: ", req.url, user, ws.id);
+  logger.info("new user: ", req.url, user, ws.id);
   ws.isAlive = true;
 
   ws.on("ping", heartbeat);
@@ -71,14 +72,14 @@ wss.on("connection", function connection(ws, req) {
     const { fz, key } = JSON.parse(data);
     const response = { connectionId: ws.id, user: user, fz, key };
     ACTIVE_OSC[ws.id] = response;
-    console.log(response);
+    logger.info(response);
     wss.broadcast(JSON.stringify(response));
   });
 
   // Lista de clientes
   setInterval(() => {
     if (Object.values(ACTIVE_OSC).length > 0) {
-      // console.log("sending broadcast"); TODO: granualar a verbose con pino o winston
+      // logger.info("sending broadcast"); TODO: granualar a verbose con pino o winston
       wss.broadcast(JSON.stringify(ACTIVE_OSC));
     }
   }, 1000);
