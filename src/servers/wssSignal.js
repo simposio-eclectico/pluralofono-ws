@@ -38,37 +38,40 @@ wssSignal.on('connection', (ws) => {
   logger.info("signaling connection");
 
   ws.on('message', (message) => {
-    if (typeof message === 'string' && Buffer.byteLength(message, 'utf8') > MAX_MSG_SIZE) {
-      logger.warn(`Mensaje demasiado grande, cerrando conexión.`);
-      ws.close(1009, 'Message too large');
-      return;
-    }
-    if (message instanceof Buffer && message.length > MAX_MSG_SIZE) {
-      logger.warn(`Mensaje binario demasiado grande, cerrando conexión.`);
-      ws.close(1009, 'Message too large');
-      return;
-    }
-    const data = JSON.parse(message);
-    
-    // Registra el peer y su sala
-    if (data.type === 'register') {
-      const { room, peerId } = data;
-      if (!PEERS.has(room)) PEERS.set(room, new Map());
-      PEERS.get(room).set(peerId, ws); // Guarda la conexión WebSocket
-      return;
-    }
-
-    // Reenvía mensajes de señalización al peer destino
-    if (data.type === 'signal') {
-      const { room, targetPeerId, signal } = data;
-      const targetPeer = PEERS.get(room)?.get(targetPeerId);
-      if (targetPeer) {
-        targetPeer.send(JSON.stringify({
-          type: 'signal',
-          senderPeerId: data.peerId,
-          signal,
-        }));
+    try {
+      if (typeof message === 'string' && Buffer.byteLength(message, 'utf8') > MAX_MSG_SIZE) {
+        logger.warn(`Mensaje demasiado grande, cerrando conexión.`);
+        ws.close(1009, 'Message too large');
+        return;
       }
+      if (message instanceof Buffer && message.length > MAX_MSG_SIZE) {
+        logger.warn(`Mensaje binario demasiado grande, cerrando conexión.`);
+        ws.close(1009, 'Message too large');
+        return;
+      }
+      const data = JSON.parse(message);
+      // Registra el peer y su sala
+      if (data.type === 'register') {
+        const { room, peerId } = data;
+        if (!PEERS.has(room)) PEERS.set(room, new Map());
+        PEERS.get(room).set(peerId, ws); // Guarda la conexión WebSocket
+        return;
+      }
+      // Reenvía mensajes de señalización al peer destino
+      if (data.type === 'signal') {
+        const { room, targetPeerId, signal } = data;
+        const targetPeer = PEERS.get(room)?.get(targetPeerId);
+        if (targetPeer) {
+          targetPeer.send(JSON.stringify({
+            type: 'signal',
+            senderPeerId: data.peerId,
+            signal,
+          }));
+        }
+      }
+    } catch (err) {
+      logger.error('Error en mensaje ws:', err);
+      ws.close(1011, 'Internal error'); // 1011 = Internal Error
     }
   });
 

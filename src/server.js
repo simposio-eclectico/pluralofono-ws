@@ -1,6 +1,13 @@
 const http = require("http");
 const logger = require('pino')();
 
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const { registerWSEndpoints } = require("./router");
 const { wssV1 } = require("./servers/wssv1");
 const { wssV2 } = require("./servers/wssv2");
