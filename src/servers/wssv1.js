@@ -3,7 +3,7 @@ const logger = require('pino')();
 const config = require('../config');
 
 const wss = new WebSocket.Server({ noServer: true });
-const ACTIVE_OSC = {};
+const ACTIVE_OSC = new Map(); // Map<ws.id, response>
 
 /**
  * Agrega función broadcast a WebSocket
@@ -25,7 +25,7 @@ wss.broadcast = function broadcast(msg) {
 const interval = setInterval(function ping() {
   wss.clients.forEach(function each(ws) {
     if (ws.isAlive === false) {
-      delete ACTIVE_OSC[ws.id];
+      ACTIVE_OSC.delete(ws.id);
       return ws.terminate();
     }
     ws.isAlive = false;
@@ -61,16 +61,16 @@ wss.on("connection", function connection(ws, req) {
   ws.on("message", function incoming(data) {
     const { fz, key } = JSON.parse(data);
     const response = { connectionId: ws.id, user: user, fz, key };
-    ACTIVE_OSC[ws.id] = response;
+    ACTIVE_OSC.set(ws.id, response);
     logger.info(response);
     wss.broadcast(JSON.stringify(response));
   });
 
   // Lista de clientes
   setInterval(() => {
-    if (Object.values(ACTIVE_OSC).length > 0) {
+    if (ACTIVE_OSC.size > 0) {
       // logger.info("sending broadcast"); TODO: granualar a verbose con pino o winston
-      wss.broadcast(JSON.stringify(ACTIVE_OSC));
+      wss.broadcast(JSON.stringify(Object.fromEntries(ACTIVE_OSC)));
     }
   }, config.get("pingTimeout"));
 });

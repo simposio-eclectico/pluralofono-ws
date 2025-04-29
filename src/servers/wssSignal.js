@@ -2,7 +2,7 @@ const WebSocket = require("ws");
 const logger = require('pino')();
 const config = require('../config');
 
-const PEERS = {}; // Almacena pares de peers por sala/ID
+const PEERS = new Map(); // Map<room, Map<peerId, ws>>
 
 // wssSignal: WebSocket de señalización para WebRTC
 const wssSignal = new WebSocket.Server({ noServer: true });
@@ -42,15 +42,15 @@ wssSignal.on('connection', (ws) => {
     // Registra el peer y su sala
     if (data.type === 'register') {
       const { room, peerId } = data;
-      if (!PEERS[room]) PEERS[room] = {};
-      PEERS[room][peerId] = ws; // Guarda la conexión WebSocket
+      if (!PEERS.has(room)) PEERS.set(room, new Map());
+      PEERS.get(room).set(peerId, ws); // Guarda la conexión WebSocket
       return;
     }
 
     // Reenvía mensajes de señalización al peer destino
     if (data.type === 'signal') {
       const { room, targetPeerId, signal } = data;
-      const targetPeer = PEERS[room]?.[targetPeerId];
+      const targetPeer = PEERS.get(room)?.get(targetPeerId);
       if (targetPeer) {
         targetPeer.send(JSON.stringify({
           type: 'signal',
@@ -63,17 +63,14 @@ wssSignal.on('connection', (ws) => {
 
   ws.on('close', () => {
     // Limpia peers desconectados
-    const rooms = Object.keys(PEERS);
-    for (const room of rooms) {
-      const peerIds = Object.keys(PEERS[room]);
-      for (const peerId of peerIds) {
-        if (PEERS[room][peerId] === ws) {
-          delete PEERS[room][peerId];
-          break;
+    for (const [room, peersMap] of PEERS.entries()) {
+      for (const [peerId, peerWs] of peersMap.entries()) {
+        if (peerWs === ws) {
+          peersMap.delete(peerId);
         }
       }
-      if (Object.keys(PEERS[room]).length === 0) {
-        delete PEERS[room];
+      if (peersMap.size === 0) {
+        PEERS.delete(room);
       }
     }
   });
