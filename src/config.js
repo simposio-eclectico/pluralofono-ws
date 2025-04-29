@@ -25,6 +25,12 @@ const config = convict({
     default: 8 * 1024, // 8kb
     env: "MAX_MSG_SIZE",
   },
+  udpPort: {
+    doc: "Port UDP to listen on",
+    format: "port",
+    default: 41234,
+    env: "UDP_PORT",
+  }
 });
 
 module.exports = config;

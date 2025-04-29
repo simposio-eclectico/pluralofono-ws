@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:udp": "node src/servers/wsUpdv1.js",
     "test": "node --test"
   },
   "keywords": [],
