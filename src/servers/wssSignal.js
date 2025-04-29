@@ -6,6 +6,17 @@ const PEERS = {}; // Almacena pares de peers por sala/ID
 // wssSignal: WebSocket de señalización para WebRTC
 const wssSignal = new WebSocket.Server({ noServer: true });
 
+// Broadcast optimizado para signaling (si se requiere)
+wssSignal.broadcast = function broadcast(msg) {
+  process.nextTick(() => {
+    wssSignal.clients.forEach(function each(client) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    });
+  });
+};
+
 wssSignal.on('connection', (ws) => {
   logger.info("signaling connection");
 

@@ -12,10 +12,14 @@ const wssV2 = new WebSocket.Server({ noServer: true });
  * @param {*} msg
  */
 wssV2.broadcast = function broadcast(msg) {
+  process.nextTick(() => {
     wssV2.clients.forEach(function each(client) {
-      client.send(msg);
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
     });
-  };
+  });
+};
   
   /**
    * Intervalo para enviar hearbeats

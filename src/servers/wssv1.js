@@ -9,8 +9,12 @@ const ACTIVE_OSC = {};
  * @param {*} msg
  */
 wss.broadcast = function broadcast(msg) {
-  wss.clients.forEach(function each(client) {
-    client.send(msg);
+  process.nextTick(() => {
+    wss.clients.forEach(function each(client) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    });
   });
 };
 
