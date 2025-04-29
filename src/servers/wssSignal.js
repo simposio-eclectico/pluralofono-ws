@@ -9,7 +9,6 @@ wssSignal.on('connection', (ws) => {
   console.log("signaling connection");
 
   ws.on('message', (message) => {
-    console.log("signaling message", message);
     const data = JSON.parse(message);
     
     // Registra el peer y su sala
