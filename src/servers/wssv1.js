@@ -50,6 +50,7 @@ wss.on("close", function close() {
 });
 
 wss.on("connection", function connection(ws, req) {
+  if (ws._socket) ws._socket.setNoDelay(true);
   ws.isAlive = true;
   ws.on('pong', function() {
     ws.isAlive = true;

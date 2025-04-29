@@ -61,6 +61,8 @@ wssV2.on("close", function close() {
 let id = 0;
 let master;
 wssV2.on("connection", function connection(ws, req) {
+  if (ws._socket) ws._socket.setNoDelay(true);
+  // TODO: SPIKE - Considerar ajustar los búferes con setRecvBufferSize y setSendBufferSize
   ws.isAlive = true;
   ws.on("pong", function () {
     ws.isAlive = true;

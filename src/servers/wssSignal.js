@@ -31,6 +31,7 @@ setInterval(function ping() {
 }, config.get("pingTimeout"));
 
 wssSignal.on('connection', (ws) => {
+  if (ws._socket) ws._socket.setNoDelay(true);
   ws.isAlive = true;
   ws.on('pong', function() {
     ws.isAlive = true;
