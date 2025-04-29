@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
 const logger = require('pino')();
+const config = require('../config');
 
 const wss = new WebSocket.Server({ noServer: true });
 const ACTIVE_OSC = {};
@@ -27,30 +28,13 @@ const interval = setInterval(function ping() {
       delete ACTIVE_OSC[ws.id];
       return ws.terminate();
     }
-
     ws.isAlive = false;
     ws.ping();
   });
-}, 60000);
-
-function heartbeat(id) {
-  clearTimeout(this.pingTimeout);
-
-  // Use `WebSocket#terminate()`, which immediately destroys the connection,
-  // instead of `WebSocket#close()`, which waits for the close timer.
-  // Delay should be equal to the interval at which your server
-  // sends out pings plus a conservative assumption of the latency.
-  this.pingTimeout = setTimeout(() => {
-    if (id) {
-      delete ACTIVE_OSC[ws.id];
-    }
-    this.terminate();
-  }, 30000 + 1000);
-}
+}, config.get("pingTimeout"));
 
 wss.on("open", function open() {
   logger.info("connected");
-  heartbeat();
   wss.send(Date.now());
 });
 
@@ -65,12 +49,14 @@ wss.on("close", function close() {
 });
 
 wss.on("connection", function connection(ws, req) {
+  ws.isAlive = true;
+  ws.on('pong', function() {
+    ws.isAlive = true;
+  });
+
   ws.id = crypto.randomUUID();
   const user = req.url.split("=")[1];
   logger.info("new user: ", req.url, user, ws.id);
-  ws.isAlive = true;
-
-  ws.on("ping", heartbeat);
 
   ws.on("message", function incoming(data) {
     const { fz, key } = JSON.parse(data);
@@ -86,6 +72,6 @@ wss.on("connection", function connection(ws, req) {
       // logger.info("sending broadcast"); TODO: granualar a verbose con pino o winston
       wss.broadcast(JSON.stringify(ACTIVE_OSC));
     }
-  }, 1000);
+  }, config.get("pingTimeout"));
 });
 

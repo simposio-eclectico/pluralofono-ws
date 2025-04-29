@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
 const logger = require('pino')();
+const config = require('../config');
 
 const PEERS = {}; // Almacena pares de peers por sala/ID
 
@@ -17,7 +18,22 @@ wssSignal.broadcast = function broadcast(msg) {
   });
 };
 
+// Intervalo para enviar pings cada 30s y limpiar conexiones muertas
+setInterval(function ping() {
+  wssSignal.clients.forEach(function each(ws) {
+    if (ws.isAlive === false) {
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, config.get("pingTimeout"));
+
 wssSignal.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', function() {
+    ws.isAlive = true;
+  });
   logger.info("signaling connection");
 
   ws.on('message', (message) => {
