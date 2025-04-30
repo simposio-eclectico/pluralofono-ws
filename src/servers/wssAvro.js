@@ -1,5 +1,4 @@
 const WebSocket = require("ws");
-const avro = require('avsc');
 const pino = require('pino')();
 const logger = pino.child({module: 'wssAvro'});
 const config = require('../config');
