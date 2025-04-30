@@ -153,4 +153,4 @@ wssV2.on("connection", function connection(ws, req) {
   }, 3000);
 });
 
-module.exports = { wssV1: wssV2 };
+module.exports = { wssV2 };

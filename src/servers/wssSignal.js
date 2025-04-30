@@ -36,32 +36,31 @@ wssSignal.on('connection', (ws) => {
   ws.on('pong', function() {
     ws.isAlive = true;
   });
-  logger.info("signaling connection");
 
   ws.on('message', (message) => {
     try {
       if (typeof message === 'string' && Buffer.byteLength(message, 'utf8') > MAX_MSG_SIZE) {
-        logger.warn(`Mensaje demasiado grande, cerrando conexión.`);
+        logger.warn('Mensaje demasiado grande, cerrando conexión.');
         ws.close(1009, 'Message too large');
         return;
       }
       if (message instanceof Buffer && message.length > MAX_MSG_SIZE) {
-        logger.warn(`Mensaje binario demasiado grande, cerrando conexión.`);
+        logger.warn('Mensaje binario demasiado grande, cerrando conexión.');
         ws.close(1009, 'Message too large');
         return;
       }
       const data = JSON.parse(message);
       // Registra el peer y su sala
       if (data.type === 'register') {
-        const { room, peerId } = data;
-        if (!PEERS.has(room)) PEERS.set(room, new Map());
-        PEERS.get(room).set(peerId, ws); // Guarda la conexión WebSocket
+        const { infoHash, peerId } = data;
+        if (!PEERS.has(infoHash)) PEERS.set(infoHash, new Map());
+        PEERS.get(infoHash).set(peerId, ws); // Guarda la conexión WebSocket
         return;
       }
       // Reenvía mensajes de señalización al peer destino
       if (data.type === 'signal') {
-        const { room, targetPeerId, signal } = data;
-        const targetPeer = PEERS.get(room)?.get(targetPeerId);
+        const { infoHash, targetPeerId, signal } = data;
+        const targetPeer = PEERS.get(infoHash)?.get(targetPeerId);
         if (targetPeer) {
           targetPeer.send(JSON.stringify({
             type: 'signal',
