@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      avsc:
+        specifier: ^5.7.7
+        version: 5.7.7
       convict:
         specifier: ^6.2.4
         version: 6.2.4
@@ -23,6 +26,10 @@ packages:
   atomic-sleep@1.0.0:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
     engines: {node: '>=8.0.0'}
+
+  avsc@5.7.7:
+    resolution: {integrity: sha512-9cYNccliXZDByFsFliVwk5GvTq058Fj513CiR4E60ndDwmuXzTJEp/Bp8FyuRmGyYupLjHLs+JA9/CBoVS4/NQ==}
+    engines: {node: '>=0.11'}
 
   convict@6.2.4:
     resolution: {integrity: sha512-qN60BAwdMVdofckX7AlohVJ2x9UvjTNoKVXCL2LxFk1l7757EJqf1nySdMkPQer0bt8kQ5lQiyZ9/2NvrFBuwQ==}
@@ -92,6 +99,8 @@ packages:
 snapshots:
 
   atomic-sleep@1.0.0: {}
+
+  avsc@5.7.7: {}
 
   convict@6.2.4:
     dependencies:

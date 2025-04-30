@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
-const logger = require('pino')();
+const pino = require('pino')();
+const logger = pino.child({module: 'wssSignal'});
 const config = require('../config');
 
 const PEERS = new Map(); // Map<room, Map<peerId, ws>>

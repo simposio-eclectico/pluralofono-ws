@@ -1,9 +1,10 @@
 const WebSocket = require("ws");
+const avro = require('avsc');
 const pino = require('pino')();
-const logger = pino.child({module: 'wssv1'});
+const logger = pino.child({module: 'wssAvro'});
 const config = require('../config');
 
-const wssV1 = new WebSocket.Server({ noServer: true });
+const wssAvro = new WebSocket.Server({ noServer: true });
 const ACTIVE_OSC = new Map(); // Map<ws.id, response>
 const MAX_MSG_SIZE = config.get('maxMsgSize');
 
@@ -11,9 +12,9 @@ const MAX_MSG_SIZE = config.get('maxMsgSize');
  * Agrega función broadcast a WebSocket
  * @param {*} msg
  */
-wssV1.broadcast = function broadcast(msg) {
+wssAvro.broadcast = function broadcast(msg) {
   process.nextTick(() => {
-    wssV1.clients.forEach(function each(client) {
+    wssAvro.clients.forEach(function each(client) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(msg);
       }
@@ -25,7 +26,7 @@ wssV1.broadcast = function broadcast(msg) {
  * Intervalo para enviar hearbeats
  */
 const interval = setInterval(function ping() {
-  wssV1.clients.forEach(function each(ws) {
+  wssAvro.clients.forEach(function each(ws) {
     if (ws.isAlive === false) {
       ACTIVE_OSC.delete(ws.id);
       return ws.terminate();
@@ -35,22 +36,22 @@ const interval = setInterval(function ping() {
   });
 }, config.get("pingTimeout"));
 
-wssV1.on("open", function open() {
+wssAvro.on("open", function open() {
   logger.info("connected");
-  wssV1.send(Date.now());
+  wssAvro.send(Date.now());
 });
 
-wssV1.on("error", function (error) {
+wssAvro.on("error", function (error) {
   const elapsed = Date.now() - start;
   logger.info("Socket closed after %dms", elapsed);
   logger.error(error);
 });
 
-wssV1.on("close", function close() {
+wssAvro.on("close", function close() {
   clearInterval(interval);
 });
 
-wssV1.on("connection", function connection(ws, req) {
+wssAvro.on("connection", function connection(ws, req) {
   if (ws._socket) ws._socket.setNoDelay(true);
   ws.isAlive = true;
   ws.on('pong', function() {
@@ -73,11 +74,9 @@ wssV1.on("connection", function connection(ws, req) {
         ws.close(1009, 'Message too large');
         return;
       }
-      const { fz, key } = JSON.parse(data);
-      const response = { connectionId: ws.id, user: user, fz, key };
+      const response = { data, connectionId: ws.id, user };
       ACTIVE_OSC.set(ws.id, response);
-      logger.info(response);
-      wssV1.broadcast(JSON.stringify(response));
+      wssAvro.broadcast(data); // lo valida sabiendo que NO es string sino binario
     } catch (err) {
       logger.error(err, 'Error en mensaje ws: ' + err.message);
       ws.close(1011, 'Internal error'); // 1011 = Internal Error
@@ -88,10 +87,10 @@ wssV1.on("connection", function connection(ws, req) {
   setInterval(() => {
     if (ACTIVE_OSC.size > 0) {
       // logger.info("sending broadcast"); TODO: granualar a verbose con pino o winston
-      wssV1.broadcast(JSON.stringify(Object.fromEntries(ACTIVE_OSC)));
+      wssAvro.broadcast(JSON.stringify({ type: 'peers', data: Object.fromEntries(ACTIVE_OSC)}));
     }
   }, config.get("pingTimeout"));
 });
 
 
-module.exports = { wssV1 };
+module.exports = { wssAvro };

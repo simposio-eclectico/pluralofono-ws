@@ -1,6 +1,7 @@
 const url = require("url");
 const WebSocket = require("ws");
-const logger = require('pino')();
+const pino = require('pino')();
+const logger = pino.child({module: 'wssv2'});
 const config = require('../config');
 
 const MAX_MSG_SIZE = config.get('maxMsgSize');
